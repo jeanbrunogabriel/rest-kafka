@@ -27,13 +27,14 @@ cursor = conn.cursor()
 # Criar a tabela
 cursor.execute('''
 CREATE TABLE produtos (
-    idproduto INTEGER PRIMARY KEY AUTOINCREMENT,
+    idproduto TEXT PRIMARY KEY,
     descricao TEXT NOT NULL,
     ganhopercentual REAL NOT NULL,
     datacriacao DATE NOT NULL,
     datamodificacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 ''')
+
 
 # Salvar (commit) as mudanças e fechar a conexão
 conn.commit()
@@ -44,6 +45,7 @@ python3 create_db.py
 chmod 777 database/db-loja.db
 
 cat <<EOF > app.py
+import uuid
 import sqlite3
 from sqlite3 import Error
 from flask import Flask, request, jsonify
@@ -80,23 +82,23 @@ def pesquisar(idproduto=None):
             return jsonify({'mensagem': str(e)})
         finally:
             conn.close()
-
 @app.route('/api-loja/produtos', methods=['POST'])
 def inserir():
     if request.method == 'POST':
         dados = request.get_json()
         descricao = dados.get('descricao')
         ganhopercentual = dados.get('ganhopercentual')
+        idproduto = dados.get('idproduto') or str(uuid.uuid4())  # Generate UUID if not provided
         datacriacao = date.today()
 
         if descricao and ganhopercentual:
             try:
                 conn = get_db_connection()
                 cur = conn.cursor()
-                sql = '''INSERT INTO produtos(descricao, ganhopercentual, datacriacao) VALUES(?, ?, ?)'''
-                cur.execute(sql, (descricao, ganhopercentual, datacriacao))
+                sql = '''INSERT INTO produtos(idproduto, descricao, ganhopercentual, datacriacao) VALUES(?, ?, ?, ?)'''
+                cur.execute(sql, (idproduto, descricao, ganhopercentual, datacriacao))
                 conn.commit()
-                return jsonify({'mensagem': 'registro inserido com sucesso'})
+                return jsonify({'mensagem': 'registro inserido com sucesso', 'idproduto': idproduto})
             except Error as e:
                 return jsonify({'mensagem': str(e)})
             finally:
